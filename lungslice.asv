@@ -13,13 +13,12 @@ info = dicominfo(fullfile(fileFolder, fileNames{1}));
 %extract size for planeXY, XZ, YZ from meta data
 voxel_size = [info.PixelSpacing; info.SliceThickness];
 
-% hWaitBar=  waitbar(0,'Reading DICOM files');
-% for i=1:length(fileNames)
-for i=1:15
+hWaitBar=  waitbar(0,'Reading DICOM files');
+for i=length(fileNames):-1:1
     fname = fullfile(fileFolder, fileNames{i});
     dInfo = dicominfo(fname);
     I = dicomread(dInfo);
     figure, imshow(I, []);    
-%     waitbar((length(fileNames):-1+1)/length(fileNames))
+    waitbar((length(fileNames):-1+1)/length(fileNames))
 end
 

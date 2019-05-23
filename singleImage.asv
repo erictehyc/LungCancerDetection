@@ -1,12 +1,19 @@
+
 clc;
 clear;
 
-%% Read image
-I = imread('abnormal1.jpg');
-figure, imshow(I), title('Original Image');
+%% Read single DICOM Image
+dInfo = dicominfo('000003.dcm');
+reference = imread('abnormal1.jpg');
+dImage = dicomread(dInfo);
+dImage = imhistmatch(dImage, reference);
+figure, imshow(dImage, []);
+
+%extract size for planeXY, XZ, YZ from meta data
+voxel_size = [dInfo.PixelSpacing; dInfo.SliceThickness];
 
 %% Smoothing - Apply median filter 
-I_t = medfilt2(I);
+I_t = medfilt2(dImage);
 
 %% Smoothing - Gaussian filter
 I_t = imgaussfilt(I_t,2);
@@ -21,11 +28,11 @@ bw      = 3;
 psi     = [0 0];
 gamma   = 2;
 N       = 4;
-img_out = zeros(size(I,1), size(I,2), N);
+img_out = zeros(size(dImage,1), size(dImage,2), N);
 for n=1:N
     gb = gabor_fn(bw,gamma,psi(1),lambda,theta)...
         + gabor_fn(bw,gamma,psi(2),lambda,theta);
-    img_out(:,:,n) = imfilter(I, gb, 'symmetric');
+    img_out(:,:,n) = imfilter(dImage, gb, 'symmetric');
     theta = theta + pi/4;
 end
 img_out_disp = sum(abs(img_out).^2, 3).^0.5;
@@ -42,12 +49,12 @@ BW = imbinarize(Iobrcbr, graythresh(Iobr));
 
 %% Marker Controlled Watershed - Not using*
 % fgm = imregionalmax(Iobrcbr);
-% I2 = labeloverlay(I,fgm);
+% I2 = labeloverlay(dImage,fgm);
 % se2 = strel(ones(5,5));
 % fgm2 = imclose(fgm,se2);
 % fgm3 = imerode(fgm2,se2);
 % fgm4 = bwareaopen(fgm3,20);
-% I3 = labeloverlay(I,fgm4);
+% I3 = labeloverlay(dImage,fgm4);
 % bw = imbinarize(Iobrcbr);
 % D = bwdist(bw);
 % DL = watershed(D);
@@ -55,7 +62,7 @@ BW = imbinarize(Iobrcbr, graythresh(Iobr));
 % gmag2 = imimposemin(gmag, bgm | fgm4);
 % L = watershed(gmag2);
 % labels = imdilate(L==0,ones(3,3)) + 2*bgm + 3*fgm4;
-% I4 = labeloverlay(I,labels);
+% I4 = labeloverlay(dImage,labels);
 % imshow(I4)
 
 %% Feature Extration - Find possible tumours
@@ -98,7 +105,7 @@ end
 
 %% Feature Extration - Plot tumour location
 if tumour ~= 0
-    figure, imshow(I), title('Possible cancer nodule on original image - with Gabor filter')
+    figure, imshow(dImage), title('Possible cancer nodule on original image - with Gabor filter')
     hold on;
     x = tumour(:,2);
     y = tumour(:,1);

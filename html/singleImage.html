@@ -1,0 +1,247 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>singleImage</title><meta name="generator" content="MATLAB 9.5"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2019-05-23"><meta name="DC.source" content="singleImage.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#2">Read single DICOM Image</a></li><li><a href="#3">Smoothing - Apply median filter</a></li><li><a href="#4">Smoothing - Gaussian filter</a></li><li><a href="#5">Adaptive histogram - Not using*</a></li><li><a href="#6">Image Enhancement - Gabor filter</a></li><li><a href="#7">Image Segmentation - Erosion and Dilation to get the binarized image (Using Otsu's thresholding)</a></li><li><a href="#8">Marker Controlled Watershed - Not using*</a></li><li><a href="#9">Feature Extration - Find possible tumours</a></li><li><a href="#10">Binarization for black pixels - Not using*</a></li><li><a href="#11">Feature Extration - Plot tumour location</a></li></ul></div><pre class="codeinput">clc;
+clear;
+</pre><h2 id="2">Read single DICOM Image</h2><pre class="codeinput">dInfo = dicominfo(<span class="string">'000003.dcm'</span>);
+reference = imread(<span class="string">'abnormal1.jpg'</span>);
+dImage = dicomread(dInfo);
+dImage = imhistmatch(dImage, reference);
+figure, imshow(dImage, []);
+
+<span class="comment">%extract size for planeXY, XZ, YZ from meta data</span>
+voxel_size = [dInfo.PixelSpacing; dInfo.SliceThickness];
+</pre><h2 id="3">Smoothing - Apply median filter</h2><pre class="codeinput">I_t = medfilt2(dImage);
+</pre><h2 id="4">Smoothing - Gaussian filter</h2><pre class="codeinput">I_t = imgaussfilt(I_t,2);
+</pre><h2 id="5">Adaptive histogram - Not using*</h2><p>I_t = adapthisteq(I_t);</p><h2 id="6">Image Enhancement - Gabor filter</h2><pre class="codeinput">lambda  = 2;
+theta   = 0;
+bw      = 3;
+psi     = [0 0];
+gamma   = 2;
+N       = 4;
+img_out = zeros(size(dImage,1), size(dImage,2), N);
+<span class="keyword">for</span> n=1:N
+    gb = gabor_fn(bw,gamma,psi(1),lambda,theta)<span class="keyword">...</span>
+        + gabor_fn(bw,gamma,psi(2),lambda,theta);
+    img_out(:,:,n) = imfilter(dImage, gb, <span class="string">'symmetric'</span>);
+    theta = theta + pi/4;
+<span class="keyword">end</span>
+img_out_disp = sum(abs(img_out).^2, 3).^0.5;
+img_out_disp = img_out_disp./max(img_out_disp(:));
+</pre><h2 id="7">Image Segmentation - Erosion and Dilation to get the binarized image (Using Otsu's thresholding)</h2><pre class="codeinput">se = strel(<span class="string">'disk'</span>, 2);
+Ie = imerode(I_t, se);
+Iobr = imreconstruct(Ie, I_t);
+Iobrd = imdilate(Iobr, se);
+Iobrcbr = imreconstruct(imcomplement(Iobrd), imcomplement(Iobr));
+Iobrcbr = imcomplement(Iobrcbr);
+BW = imbinarize(Iobrcbr, graythresh(Iobr));
+</pre><h2 id="8">Marker Controlled Watershed - Not using*</h2><p>fgm = imregionalmax(Iobrcbr); I2 = labeloverlay(dImage,fgm); se2 = strel(ones(5,5)); fgm2 = imclose(fgm,se2); fgm3 = imerode(fgm2,se2); fgm4 = bwareaopen(fgm3,20); I3 = labeloverlay(dImage,fgm4); bw = imbinarize(Iobrcbr); D = bwdist(bw); DL = watershed(D); bgm = DL == 0; gmag2 = imimposemin(gmag, bgm | fgm4); L = watershed(gmag2); labels = imdilate(L==0,ones(3,3)) + 2*bgm + 3*fgm4; I4 = labeloverlay(dImage,labels); imshow(I4)</p><h2 id="9">Feature Extration - Find possible tumours</h2><pre class="codeinput">detect = bwareafilt(imclearborder(BW), [100 1000]);<span class="comment">% tumour are usually larger than 100</span>
+figure, imshow(detect); title(<span class="string">'Possible cancer nodule location'</span>);
+[B,~] = bwboundaries(detect,<span class="string">'noholes'</span>);
+stats = regionprops(BW,<span class="string">'Area'</span>,<span class="string">'centroid'</span>);
+tumour = 0;
+<span class="keyword">for</span> j = 1:length(B)
+  metric = 4*pi*stats(j).Area/sum(sqrt(sum(diff(B{j}).^2,2)))^2;
+  <span class="comment">%disp(metric);</span>
+
+  <span class="keyword">if</span> metric &gt; 3
+      tumour = B{j};
+  <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><h2 id="10">Binarization for black pixels - Not using*</h2><p>tmp =ones(512,512); black=0;</p><p>for i=1:512;     for j=1:512;         tmp(i,j)=img_out_disp(i,j);     end end</p><p>for i=1:512;     for j=1:512;         if tmp(i,j)&lt;=0.12                 black=black+1;             end     end end if black&gt;=17000     ('not a lung cancer patient') else     ('lung cancer patient') end</p><h2 id="11">Feature Extration - Plot tumour location</h2><pre class="codeinput"><span class="keyword">if</span> tumour ~= 0
+    figure, imshow(dImage), title(<span class="string">'Possible cancer nodule on original image - with Gabor filter'</span>)
+    hold <span class="string">on</span>;
+    x = tumour(:,2);
+    y = tumour(:,1);
+    plot(x, y, <span class="string">'color'</span>,<span class="string">'r'</span>,<span class="string">'linestyle'</span>,<span class="string">'-'</span>,<span class="string">'linewidth'</span>, 3)
+    disp(metric);
+    disp(<span class="string">'Possible cancer nodule found - Category: Cancer Patient'</span>);
+<span class="keyword">else</span>
+    disp(<span class="string">'No lung cancer nodule found - Category: Normal Patient'</span>);
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+
+clc;
+clear;
+
+%% Read single DICOM Image
+dInfo = dicominfo('000003.dcm');
+reference = imread('abnormal1.jpg');
+dImage = dicomread(dInfo);
+dImage = imhistmatch(dImage, reference);
+figure, imshow(dImage, []);
+
+%extract size for planeXY, XZ, YZ from meta data
+voxel_size = [dInfo.PixelSpacing; dInfo.SliceThickness];
+
+%% Smoothing - Apply median filter 
+I_t = medfilt2(dImage);
+
+%% Smoothing - Gaussian filter
+I_t = imgaussfilt(I_t,2);
+
+%% Adaptive histogram - Not using*
+% I_t = adapthisteq(I_t);
+
+%% Image Enhancement - Gabor filter
+lambda  = 2;
+theta   = 0;
+bw      = 3;
+psi     = [0 0];
+gamma   = 2;
+N       = 4;
+img_out = zeros(size(dImage,1), size(dImage,2), N);
+for n=1:N
+    gb = gabor_fn(bw,gamma,psi(1),lambda,theta)...
+        + gabor_fn(bw,gamma,psi(2),lambda,theta);
+    img_out(:,:,n) = imfilter(dImage, gb, 'symmetric');
+    theta = theta + pi/4;
+end
+img_out_disp = sum(abs(img_out).^2, 3).^0.5;
+img_out_disp = img_out_disp./max(img_out_disp(:));
+
+%% Image Segmentation - Erosion and Dilation to get the binarized image (Using Otsu's thresholding)
+se = strel('disk', 2);
+Ie = imerode(I_t, se);
+Iobr = imreconstruct(Ie, I_t);
+Iobrd = imdilate(Iobr, se);
+Iobrcbr = imreconstruct(imcomplement(Iobrd), imcomplement(Iobr));
+Iobrcbr = imcomplement(Iobrcbr);
+BW = imbinarize(Iobrcbr, graythresh(Iobr));
+
+%% Marker Controlled Watershed - Not using*
+% fgm = imregionalmax(Iobrcbr);
+% I2 = labeloverlay(dImage,fgm);
+% se2 = strel(ones(5,5));
+% fgm2 = imclose(fgm,se2);
+% fgm3 = imerode(fgm2,se2);
+% fgm4 = bwareaopen(fgm3,20);
+% I3 = labeloverlay(dImage,fgm4);
+% bw = imbinarize(Iobrcbr);
+% D = bwdist(bw);
+% DL = watershed(D);
+% bgm = DL == 0;
+% gmag2 = imimposemin(gmag, bgm | fgm4);
+% L = watershed(gmag2);
+% labels = imdilate(L==0,ones(3,3)) + 2*bgm + 3*fgm4;
+% I4 = labeloverlay(dImage,labels);
+% imshow(I4)
+
+%% Feature Extration - Find possible tumours
+detect = bwareafilt(imclearborder(BW), [100 1000]);% tumour are usually larger than 100
+figure, imshow(detect); title('Possible cancer nodule location');
+[B,~] = bwboundaries(detect,'noholes');
+stats = regionprops(BW,'Area','centroid');
+tumour = 0;
+for j = 1:length(B)
+  metric = 4*pi*stats(j).Area/sum(sqrt(sum(diff(B{j}).^2,2)))^2;
+  %disp(metric);
+    
+  if metric > 3
+      tumour = B{j};
+  end
+end
+
+%% Binarization for black pixels - Not using*
+% tmp =ones(512,512);
+% black=0;
+%
+% for i=1:512;
+%     for j=1:512;
+%         tmp(i,j)=img_out_disp(i,j);
+%     end
+% end
+% 
+% for i=1:512;
+%     for j=1:512;
+%         if tmp(i,j)<=0.12
+%                 black=black+1;
+%             end
+%     end
+% end
+% if black>=17000
+%     ('not a lung cancer patient')
+% else
+%     ('lung cancer patient')
+% end
+
+%% Feature Extration - Plot tumour location
+if tumour ~= 0
+    figure, imshow(dImage), title('Possible cancer nodule on original image - with Gabor filter')
+    hold on;
+    x = tumour(:,2);
+    y = tumour(:,1);
+    plot(x, y, 'color','r','linestyle','-','linewidth', 3)
+    disp(metric);
+    disp('Possible cancer nodule found - Category: Cancer Patient');
+else
+    disp('No lung cancer nodule found - Category: Normal Patient');
+end
+##### SOURCE END #####
+--></body></html>
