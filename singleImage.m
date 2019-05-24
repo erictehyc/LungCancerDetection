@@ -3,7 +3,7 @@ clc;
 clear;
 
 %% Read single DICOM Image
-dInfo = dicominfo('000003.dcm');
+dInfo = dicominfo('000096.dcm');
 dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
@@ -47,6 +47,7 @@ Iobrd = imdilate(Iobr, se);
 Iobrcbr = imreconstruct(imcomplement(Iobrd), imcomplement(Iobr));
 Iobrcbr = imcomplement(Iobrcbr);
 BW = imbinarize(Iobrcbr, graythresh(Iobr));
+figure, imshow(BW), title('Otsu');
 
 %% Marker Controlled Watershed - Not using*
 % fgm = imregionalmax(Iobrcbr);
