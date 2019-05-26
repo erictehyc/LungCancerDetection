@@ -1,10 +1,9 @@
-
 clc;
 clear;
 close all;
 
 %% Read single DICOM Image
-dInfo = dicominfo('000096.dcm');
+dInfo = dicominfo('000003.dcm');
 dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);

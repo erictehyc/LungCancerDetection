@@ -1,8 +1,9 @@
 clc;
 clear;
+close all;
 
 %% Read single DICOM Image
-dInfo = dicominfo('000003.dcm');
+dInfo = dicominfo('000096.dcm');
 %dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
@@ -39,7 +40,7 @@ end
 
 img_out_disp = sum(abs(img_out).^2, 3).^0.5;
 img_out_disp = img_out_disp./max(img_out_disp(:));
-imshow(img_out_disp), title('gabor output, normalized');
+figure, imshow(img_out_disp), title('gabor output, normalized');
 
 %% This is marker controlled watershed using masking
 Ir = img_out_disp;
