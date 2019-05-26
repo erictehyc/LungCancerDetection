@@ -4,10 +4,10 @@ clear;
 
 %% Read single DICOM Image
 dInfo = dicominfo('000003.dcm');
-dReference = imread('abnormal1.jpg');
-% dImage = uint8(dicomread(dInfo));
+% dReference = imread('abnormal1.jpg');
 dImage = dicomread(dInfo);
-dImage = imhistmatch(dImage, dReference);
+% dImage = uint8(dicomread(dInfo));
+% dImage = imhistmatch(dImage, dReference);
 figure, imshow(dImage, []), title('Original Image');
 
 %extract size for planeXY, XZ, YZ from meta data
@@ -38,15 +38,17 @@ for n=1:N
 end
 img_out_disp = sum(abs(img_out).^2, 3).^0.5;
 img_out_disp = img_out_disp./max(img_out_disp(:));
+% figure, imshow(img_out_disp), title('Gabor Filter');
 
 %% Image Segmentation - Erosion and Dilation to get the binarized image (Using Otsu's thresholding)
-se = strel('disk', 2);
+se = strel('  ', 2);
 Ie = imerode(I_t, se);
 Iobr = imreconstruct(Ie, I_t);
 Iobrd = imdilate(Iobr, se);
 Iobrcbr = imreconstruct(imcomplement(Iobrd), imcomplement(Iobr));
 Iobrcbr = imcomplement(Iobrcbr);
 BW = imbinarize(Iobrcbr, graythresh(Iobr));
+% figure, imshow(BW), title('Otsu Thresholding');
 
 %% Marker Controlled Watershed - Not using*
 % fgm = imregionalmax(Iobrcbr);

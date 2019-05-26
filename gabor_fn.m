@@ -1,3 +1,7 @@
+% Gabor filter - Coded by Bariqi Abdillah
+% Adapted from: https://github.com/bariqi/Image-Processing-for-Lung-Cancer-Classification
+% Used for FIT3081 Image Processing, 2019 S1 Class (24/05/2019)
+
 function gb=gabor_fn(bw,gamma,psi,lambda,theta)
 % bw    = bandwidth, (1)
 % gamma = aspect ratio, (0.5)
