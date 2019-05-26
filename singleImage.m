@@ -3,8 +3,11 @@ clc;
 clear;
 
 %% Read single DICOM Image
+<<<<<<< HEAD
 dInfo = dicominfo('000003.dcm');
 % dReference = imread('abnormal1.jpg');
+dReference = imread('abnormal1.jpg');
+% dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
 % dImage = uint8(dicomread(dInfo));
 % dImage = imhistmatch(dImage, dReference);
@@ -48,7 +51,11 @@ Iobrd = imdilate(Iobr, se);
 Iobrcbr = imreconstruct(imcomplement(Iobrd), imcomplement(Iobr));
 Iobrcbr = imcomplement(Iobrcbr);
 BW = imbinarize(Iobrcbr, graythresh(Iobr));
+<<<<<<< HEAD
 % figure, imshow(BW), title('Otsu Thresholding');
+=======
+figure, imshow(BW), title('Otsu');
+>>>>>>> 1620c6cfd37ae10a3cc7a6be205d8adb12daa353
 
 %% Marker Controlled Watershed - Not using*
 % fgm = imregionalmax(Iobrcbr);
