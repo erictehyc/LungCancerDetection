@@ -1,4 +1,3 @@
-
 clc;
 clear;
 close all;
@@ -12,7 +11,10 @@ dImage = imhistmatch(dImage, dReference);
 figure, imshow(dImage, []), title('Original Image');
 
 %extract size for planeXY, XZ, YZ from meta data
-voxel_size = [dInfo.PixelSpacing; dInfo.SliceThickness];
+pixel_spacing = dInfo.PixelSpacing
+per_pixel_area = pixel_spacing(1)*pixel_spacing(2);
+% num_white_pixels = nnz(binarized_img);
+% total_white_area = num_white_pixels * per_pixel_area;
 
 %% Smoothing - Apply median filter 
 I_t = medfilt2(dImage);
@@ -89,31 +91,34 @@ stage_one = {};
 stage_two = {};
 stage_three = {};
 stage_four = {};
+tumour = [];
 for i = 1:length(blobMeasurements)
-    blobBoundary = blobMeasurements.BoundingBox; 
-    blobArea = blobMeasurements.Area;
-    blobPerimeter = blobMeasurements.Perimeter;
-    blobEccentricity = blobMeasurements.Eccentricity;
-    blobCircularity = (4*pi*blobArea)/blobPerimeter^2;
-    
+    thisBlob = blobMeasurements(i);
+    blobBoundary = (thisBlob.BoundingBox);
+    blobArea = thisBlob.Area * per_pixel_area
+    blobPerimeter = thisBlob.Perimeter * pixel_spacing
+    blobMajorAxis = thisBlob.MajorAxisLength * pixel_spacing
+    blobEccentricity = thisBlob.Eccentricity;
+    blobCircularity = (4*pi*blobArea)/blobPerimeter*blobPerimeter;
+   
     if (blobArea>206 && blobArea<=341) && (blobPerimeter > 54 && blobPerimeter <=77)
-        tumour = blobBoundary
-        stage_one = {stage_one blobBoundary}
+        tumour = [tumour blobMeasurements{i}];
+        stage_one = {stage_one blobMeasurements{i}};
     end
     
-     if (blobArea>206 && blobArea<=341) && (blobPerimeter > 54 && blobPerimeter <=77)
-        tumour = blobBoundary
-        stage_one = {stage_one blobBoundary}
-        end
+    if (blobArea>341 && blobArea<=491) && (blobPerimeter > 77 && blobPerimeter <=94)
+        tumour = [tumour blobMeasurements{i}];
+        stage_two = {stage_two blobMeasurements{i}};
+    end
     
-     if (blobArea>206 && blobArea<=341) && (blobPerimeter > 54 && blobPerimeter <=77)
-        tumour = blobBoundary
-        stage_one = {stage_one blobBoundary}
-     end
+    if (blobArea>491 && blobArea<=608) && (blobPerimeter > 94 && blobPerimeter <=109)
+        tumour = [tumour blobMeasurements{i}];
+        stage_three = {stage_three blobMeasurements{i}};
+    end
     
-    if (blobArea>206 && blobArea<=341) && (blobPerimeter > 54 && blobPerimeter <=77)
-        tumour = blobBoundary
-        stage_one = {stage_one blobBoundary}
+    if (blobArea>608) && (blobPerimeter > 109)
+        tumour = [tumour blobMeasurements{i}];
+        stage_four = {stage_four blobMeasurements{i}};
     end
         
 end

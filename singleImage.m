@@ -3,8 +3,8 @@ clc;
 clear;
 
 %% Read single DICOM Image
-<<<<<<< HEAD
-dInfo = dicominfo('000003.dcm');
+
+dInfo = dicominfo('000096.dcm');
 % dReference = imread('abnormal1.jpg');
 dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
@@ -21,7 +21,7 @@ I_t = medfilt2(dImage);
 
 %% Smoothing - Gaussian filter
 I_t = imgaussfilt(I_t,2);
-
+imageSegmenter(dImage);
 %% Adaptive histogram - Not using*
 % I_t = adapthisteq(I_t);
 
@@ -44,18 +44,14 @@ img_out_disp = img_out_disp./max(img_out_disp(:));
 % figure, imshow(img_out_disp), title('Gabor Filter');
 
 %% Image Segmentation - Erosion and Dilation to get the binarized image (Using Otsu's thresholding)
-se = strel('  ', 2);
+se = strel('disk', 2);
 Ie = imerode(I_t, se);
 Iobr = imreconstruct(Ie, I_t);
 Iobrd = imdilate(Iobr, se);
 Iobrcbr = imreconstruct(imcomplement(Iobrd), imcomplement(Iobr));
 Iobrcbr = imcomplement(Iobrcbr);
 BW = imbinarize(Iobrcbr, graythresh(Iobr));
-<<<<<<< HEAD
-% figure, imshow(BW), title('Otsu Thresholding');
-=======
 figure, imshow(BW), title('Otsu');
->>>>>>> 1620c6cfd37ae10a3cc7a6be205d8adb12daa353
 
 %% Marker Controlled Watershed - Not using*
 % fgm = imregionalmax(Iobrcbr);

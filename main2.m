@@ -1,6 +1,12 @@
 clc;
 clear;
 close all;
+%% Eric
+
+fileFolder = fullfile(pwd, 'LIDC-IDRI-0001','01-01-2000-30178','3000566-03192');
+files = dir(fullfile(fileFolder, '*.dcm'));%specify data file diectory
+fileNames = {files.name};
+
 
 %% Read single DICOM Image
 dInfo = dicominfo('000096.dcm');
@@ -8,7 +14,7 @@ dInfo = dicominfo('000096.dcm');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
 %img_in = imhistmatch(dImage, dReference);
-img_in = dImage;
+img_in = uint16(dImage);
 figure, imshow(img_in, []), title('Original Image');
 
 %extract size for planeXY, XZ, YZ from meta data
@@ -42,6 +48,28 @@ img_out_disp = sum(abs(img_out).^2, 3).^0.5;
 img_out_disp = img_out_disp./max(img_out_disp(:));
 figure, imshow(img_out_disp), title('gabor output, normalized');
 
+%% Eric - get lung volume
+
+% Built-in Otsu Global Thresholding to find threshold value
+T = graythresh(img_in);         % Threshold value
+BW = imbinarize(img_in,T);      % Threshold mask
+figure,imshow(BW, []), title('Mask using Built-in Otsu Threshold');
+
+% Invert mask
+BW = imcomplement(BW);
+
+% Fill holes
+BW = imfill(BW, 'holes');
+
+% Clear borders
+BW = imclearborder(BW);
+
+figure,imshow(BW, []), title('Mask using Built-in Otsu Threshold After Refining');
+
+maskedImage = img_in;
+maskedImage(~BW) = 0;
+figure,imshow(maskedImage, []), title('Lung Volume using Built-in Otsu Threshold');
+
 %% This is marker controlled watershed using masking
 Ir = img_out_disp;
 se = strel('disk', 20);
@@ -59,7 +87,7 @@ m(186:321,348:410) = 1;
 seg = region_seg(Ia, m, 800); % Run segmentation with 800 iteration
 figure, imshow(seg); title('Global Region-Based Segmentation')
 
-%% Binarization for image classification
+%% Binarization for image classification (masked Image)
 tmp=ones(512,512);
 black=0;
 for i=1:512
@@ -74,8 +102,19 @@ for i=1:512
         end
     end
 end
+tmp = imclearborder(tmp);
 figure, imshow(tmp), title('Segmented lung')
 
+%% Eric
+[B,L] = bwboundaries(tmp,'noholes');
+figure, imshow(label2rgb(L, @jet, [.5 .5 .5]))
+hold on
+for k = 1:length(B)
+   boundary = B{k};
+   plot(boundary(:,2), boundary(:,1), 'w', 'LineWidth', 2)
+end
+
+%%
 if black>=17179
     ('normal lung')
 else

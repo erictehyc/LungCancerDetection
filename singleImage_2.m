@@ -3,7 +3,7 @@ clear;
 close all;
 
 %% Read single DICOM Image
-dInfo = dicominfo('000003.dcm');
+dInfo = dicominfo('000082.dcm');
 dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
@@ -11,13 +11,17 @@ dImage = imhistmatch(dImage, dReference);
 figure, imshow(dImage, []), title('Original Image');
 
 %extract size for planeXY, XZ, YZ from meta data
-voxel_size = [dInfo.PixelSpacing; dInfo.SliceThickness];
+pixel_spacing = dInfo.PixelSpacing;
+per_pixel_area = pixel_spacing(1)*pixel_spacing(2);
+% num_white_pixels = nnz(binarized_img);
+% total_white_area = num_white_pixels * per_pixel_area;
 
 %% Smoothing - Apply median filter 
 I_t = medfilt2(dImage);
 
 %% Smoothing - Gaussian filter
 I_t = imgaussfilt(I_t,2);
+imageSegmenter(dImage);
 
 %% Sharpen Image
 % I_t = imsharpen(I_t, 'Radius', 1.5, 'Amount', 10);
@@ -82,37 +86,49 @@ figure, imshow(BW, []), title('Segmented Image using Otsu Thresholding');
 holes = imclearborder(BW);
 holesAccurate = bwareafilt(holes, [50 1000]);% tumour are usually larger than 100
 figure, imshow(holesAccurate), title('Clear Border');
+
+% Show tumour boundaries
+boundary = bwboundaries(holesAccurate);
+figure, imshow(img_out_disp)
+hold on
+visboundaries(holesAccurate, 'Color', 'b');
+
 labeledImage = bwlabel(holesAccurate, 8); % Label each blob so we can make measurements of it
 blobMeasurements = regionprops(labeledImage,dImage,'all'); % Get all the blob properties
 stage_one = {};
 stage_two = {};
 stage_three = {};
 stage_four = {};
+tumour = [];
 for i = 1:length(blobMeasurements)
-    blobBoundary = blobMeasurements.BoundingBox; 
-    blobArea = blobMeasurements.Area;
-    blobPerimeter = blobMeasurements.Perimeter;
-    blobEccentricity = blobMeasurements.Eccentricity;
-    blobCircularity = (4*pi*blobArea)/blobPerimeter^2;
+    thisBlob = blobMeasurements(i);
+    blobBoundary = (thisBlob.BoundingBox);
+    blobArea = thisBlob.Area * per_pixel_area
+    blobPerimeter = thisBlob.PerimeterOld * pixel_spacing
+    blobMajorAxis = thisBlob.MajorAxisLength * pixel_spacing
+    blobEccentricity = thisBlob.Eccentricity;
     
+    % Less Circular when result deviates far from 1.
+    blobCircularity = (blobPerimeter.^2) ./ (4*pi*blobArea)
+   
     if (blobArea>206 && blobArea<=341) && (blobPerimeter > 54 && blobPerimeter <=77)
-        tumour = blobBoundary
-        stage_one = {stage_one blobBoundary}
+        tumour = [tumour blobMeasurements{i}];
+        stage_one = {stage_one blobMeasurements{i}};
     end
     
     if (blobArea>341 && blobArea<=491) && (blobPerimeter > 77 && blobPerimeter <=94)
-        tumour = blobBoundary
-        stage_two = {stage_two blobBoundary}
+        tumour = [tumour blobMeasurements{i}];
+        stage_two = {stage_two blobMeasurements{i}};
     end
     
     if (blobArea>491 && blobArea<=608) && (blobPerimeter > 94 && blobPerimeter <=109)
-        tumour = blobBoundary
-        stage_three = {stage_three blobBoundary}
+        tumour = [tumour blobMeasurements{i}];
+        stage_three = {stage_three blobMeasurements{i}};
     end
     
     if (blobArea>608) && (blobPerimeter > 109)
-        tumour = blobBoundary
-        stage_four = {stage_four blobBoundary}
+        tumour = [tumour blobMeasurements{i}];
+        stage_four = {stage_four blobMeasurements{i}};
     end
         
 end
