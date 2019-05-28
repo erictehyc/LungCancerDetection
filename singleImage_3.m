@@ -89,7 +89,7 @@ figure, imshow(img_out_disp), title('gabor output, normalized');
 % nnz(maskedImage)
 % figure, imshow(maskedImage, []), title('Masked Image showing Possible Tumors');
 
-%% This is marker controlled watershed using masking
+%% Active Contour using masking to get Lung Volume
 Ir = img_out_disp;
 se = strel('disk', 20);
 Ie = imerode(Ir, se);
@@ -104,7 +104,7 @@ m = zeros(size(Ia,1),size(Ia,2));
 m(200:320,95:180) = 1;
 m(186:321,348:410) = 1;
 seg = region_seg(Ia, m, 800); % Run segmentation with 800 iteration
-figure, imshow(seg); title('Global Region-Based Segmentation - MarkerControlledWatershed Mask')
+figure, imshow(seg); title('Global Region-Based Segmentation - RegionActiveContour Mask')
 
 %% Binarization for image classification (masked Image)
 tmp=ones(512,512);
@@ -122,58 +122,49 @@ for i=1:512
     end
 end
 tmp = imclearborder(tmp);
-figure, imshow(tmp), title('Lung volume applied with MarkerControlledWatershed Mask')
+figure, imshow(tmp), title('Lung volume applied with RegionActiveContour Mask')
 
-
-%%
-tmpBW = imbinarize(tmp); % Built-in Otsu Thresholding to get nodules - blobs will clump together
-figure, imshow(tmpBW), title('BW Segmented lung nodules mask')
-
-%% This is marker controlled watershed using masking
+%% Eric to extract nodules
+% This is marker controlled watershed using masking to get nodules
 
 I_eq = adapthisteq(tmp);
 
 tmpBW = imbinarize(tmp, graythresh(I_eq)); % Built-in Otsu Thresholding to get nodules - blobs will clump together
 figure, imshow(tmpBW), title('Otsu BW Segmented lung nodules mask')
-bw2 = imfill(tmpBW,'holes');
-bw3 = imopen(bw2, ones(5,5));
-bw4 = bwareaopen(bw3, 40);
-bw4_perim = bwperim(bw4);
-overlay1 = imoverlay(I_eq, bw4_perim, [.3 1 .3]);
-figure, imshow(overlay1), title('Overlay');
 
-mask_em = imextendedmax(I_eq, 30);
-figure, imshow(mask_em)
+watershed_nodule = watershedTransform(tmpBW); % Watershed to separate out blobs (obtained from MathWorks)
+watershed_nodule = imbinarize(watershed_nodule);
+figure, imshow(watershed_nodule), title('Watershed BW Segmented lung nodules mask');
 
-mask_em = imclose(mask_em, ones(5,5));
-mask_em = imfill(mask_em, 'holes');
-mask_em = bwareaopen(mask_em, 40);
-overlay2 = imoverlay(I_eq, bw4_perim | mask_em, [.3 1 .3]);
-figure, imshow(overlay2), title('Overlay2');
+maskedNodule = img_in;
+maskedNodule(~watershed_nodule) = 0;
+figure,imshow(maskedNodule, []), title('Nodules using WatershedSegmentation');
 
-I_eq_c = imcomplement(I_eq);
-I_mod = imimposemin(I_eq_c, ~bw4 | mask_em);
 
-L = watershed(I_mod);
-figure, imshow(label2rgb(L)); title('Global Region-Based Segmentation to get nodules - MarkerControlledWatershed Mask')
-
-%% Eric to extract nodules
-
+%% Visualize the nodules on original image
 % Show tumour boundaries
-boundary = bwboundaries(tmpBW);
+boundary = bwboundaries(watershed_nodule);
 figure, imshow(dImage, []), title('Possible Nodules location')
 hold on
 visboundaries(boundary, 'Color', 'b');
 
 %% Tumor parameters to reduce false positives
 
-holesAccurate = bwareafilt(tmpBW, [50 1000]);% malignant tumour are usually larger than 100
-figure, imshow(holesAccurate), title('Possible Nodules location (area considered)');
+holesAccurate = bwareafilt(watershed_nodule, [50 1000]); % malignant tumour are usually larger than 50
+boundary = bwboundaries(holesAccurate);
+figure, imshow(dImage, []), title('Possible Nodules location (area considered)');
 hold on
 visboundaries(boundary, 'Color', 'r');
 
+%% Tumor parameters to reduce false positives
+
 labeledImage = bwlabel(holesAccurate); % Label each blob so we can make measurements of it
 blobMeasurements = regionprops(labeledImage,dImage,'all'); % Get all the blob properties
+
+% extract pixel size for planeXY, XZ, YZ from DICOM meta data
+pixel_spacing = dInfo.PixelSpacing;
+per_pixel_area = pixel_spacing(1)*pixel_spacing(2);
+
 stage_one = {};
 stage_two = {};
 stage_three = {};
