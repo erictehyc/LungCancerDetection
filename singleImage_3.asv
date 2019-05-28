@@ -9,7 +9,7 @@ fileNames = {files.name};
 
 
 %% Read single DICOM Image
-dInfo = dicominfo('000049.dcm');
+dInfo = dicominfo('000096.dcm');
 %dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
@@ -248,42 +248,38 @@ else
     ('tumor detected')
     
     % Visualize output
-    if length(t1b_stats) ~= 0
-        t1b_holes = bwlabel(t1b); 
-        boundary = bwboundaries(t1b_holes);
-        figure, imshow(dImage, []), title('T1b Tumors');
-        hold on
-        visboundaries(boundary, 'Color', 'r');
-
-        maskedImageT1b = dImage;
-        maskedImageT1b(~t1b_holes) = 0;
-        figure, imshow(maskedImageT1b, []), title('T1b Tumors');
-    end
+    if 
+    t1b_holes = bwlabel(t1b); 
+    boundary = bwboundaries(t1b_holes);
+    figure, imshow(dImage, []), title('T1b Tumors');
+    hold on
+    visboundaries(boundary, 'Color', 'r');
+    
+    maskedImageT1b = dImage;
+    maskedImageT1b(~t1b_holes) = 0;
+    figure, imshow(maskedImageT1b, []), title('T1b Tumors');
     
     % Visualize output
-    if length(t1c_stats) ~= 0
-        t1c_holes = bwlabel(t1c); 
-        boundary = bwboundaries(t1c_holes);
-        imshow(dImage, []), title('T1c Tumors');
-        hold on
-        visboundaries(boundary, 'Color', 'g');
-
-        maskedImageT1c = dImage;
-        maskedImageT1c(~t1c_holes) = 0;
-        figure, imshow(maskedImageT1c, []), title('T1c Tumors');
-    end
+    t1c_holes = bwlabel(t1c); 
+    boundary = bwboundaries(t1c_holes);
+    imshow(dImage, []), title('T1c Tumors');
+    hold on
+    visboundaries(boundary, 'Color', 'g');
+    
+    maskedImageT1c = dImage;
+    maskedImageT1c(~t1c_holes) = 0;
+    figure, imshow(maskedImageT1c, []), title('T1c Tumors');
+    
     
     % Visualize output
-    if length(t2_stats) ~= 0
-        t2_holes = bwlabel(t2); 
-        boundary = bwboundaries(t2_holes);
-        figure, imshow(dImage, []), title('T2 Tumors');
-        hold on
-        visboundaries(boundary, 'Color', 'c');
-
-        maskedImageT2 = dImage;
-        maskedImageT2(~t2_holes) = 0;
-        figure, imshow(maskedImageT2, []), title('T2 Tumors');
-    end
+    t2_holes = bwlabel(t2); 
+    boundary = bwboundaries(t2_holes);
+    figure, imshow(dImage, []), title('T2 Tumors');
+    hold on
+    visboundaries(boundary, 'Color', 'c');
+    
+    maskedImageT2 = dImage;
+    maskedImageT2(~t2_holes) = 0;
+    figure, imshow(maskedImageT2, []), title('T2 Tumors');
 
 end
