@@ -9,11 +9,13 @@ fileNames = {files.name};
 
 
 %% Read single DICOM Image
-dInfo = dicominfo('000049.dcm');
+dInfo = dicominfo('000096.dcm');
 %dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
 %img_in = imhistmatch(dImage, dReference);
+
+%%
 img_in = dImage;
 figure, imshow(img_in, []), title('Original Image');
 
@@ -124,10 +126,13 @@ end
 tmp = imclearborder(tmp);
 figure, imshow(tmp), title('Lung volume applied with RegionActiveContour Mask')
 
-%% Eric to extract nodules
+%% Eric to extract nodules using Watershed Segmentation
+% https://www.mathworks.com/company/newsletters/articles/the-watershed-transform-strategies-for-image-segmentation.html
 % This is marker controlled watershed using masking to get nodules
 
 I_eq = adapthisteq(tmp);
+figure, imhist(tmp), title('Histogram of lung volume image');
+figure, imhist(I_eq), title('Histogram of lung volume image after equalization');
 
 tmpBW = imbinarize(tmp, graythresh(I_eq)); % Built-in Otsu Thresholding to get nodules - blobs will clump together
 figure, imshow(tmpBW), title('Otsu BW Segmented lung nodules mask')
@@ -174,7 +179,7 @@ stats = regionprops(cc, 'all');
 
 %% Create new column (dervied) in regionprops (stats) structure array 
 
-% extract pixel size for planeXY, XZ, YZ from DICOM meta data
+% DICOM header - extract pixel size for planeXY, XZ, YZ from DICOM meta data
 pixel_spacing = dInfo.PixelSpacing;
 per_pixel_area = pixel_spacing(1)*pixel_spacing(2);
 
@@ -190,100 +195,136 @@ actual_perimeter = num2cell([stats.Perimeter]*[pixel_spacing(1)]);
 actual_diameter = num2cell([stats.MajorAxisLength]*[pixel_spacing(1)]);
 [stats.ActualMajorAxisLength] = actual_diameter{:};
 
-% Actual major axis based on pixel spacing
-actual_diameter = num2cell([stats.MajorAxisLength]*[pixel_spacing(1)]);
-[stats.ActualMajorAxisLength] = actual_diameter{:};
-
+% Mean Gray Level Intensity of nodule
+for k = 1 : length(stats)           % Loop through all blobs.
+        thisBlobsPixels = stats(k).PixelIdxList;        % Get list of pixels in current blob.
+        MeanIntensity = mean(dImage(thisBlobsPixels));  % Find mean intensity (in original image!)
+        stats(k).MeanIntensity = MeanIntensity;
+end
+    
 %% Find desired Parameters
-
 % Get index in regionprops stucture array that satisfy property according
 % to TNM 8th edition
 
 % Stage t1a
-idx = find([stats.ActualMajorAxisLength] > 3 & [stats.ActualMajorAxisLength] <= 10);
+if (length(stats) ~= 0)
+idx = find([stats.ActualMajorAxisLength] > 3 & [stats.ActualMajorAxisLength] <= 10 & [stats.Eccentricity] < 0.9 & [stats.MeanIntensity] > 380);
 
 t1a = ismember(labelmatrix(cc), idx);  
 figure, imshow(t1a), title('Stage t1a mask - Discard due to high false positive');
 t1a_stats = stats(idx);
 
 % Stage t1b
-idx = find([stats.ActualMajorAxisLength] > 10 & [stats.ActualMajorAxisLength] <= 20);
+idx = find([stats.ActualMajorAxisLength] > 10 & [stats.ActualMajorAxisLength] <= 20 & [stats.Eccentricity] < 0.85 & [stats.MeanIntensity] > 380);
 
 t1b = ismember(labelmatrix(cc), idx);  
 figure, imshow(t1b), title('Stage t1b mask');
 t1b_stats = stats(idx);
 
 % Stage t1c
-idx = find([stats.ActualMajorAxisLength] > 20 & [stats.ActualMajorAxisLength] <= 30);
+idx = find([stats.ActualMajorAxisLength] > 20 & [stats.ActualMajorAxisLength] <= 30 & [stats.Eccentricity] < 0.75 & [stats.MeanIntensity] > 385);
 
 t1c = ismember(labelmatrix(cc), idx);  
 figure, imshow(t1c), title('Stage t1c mask');
 t1c_stats = stats(idx);
 
 % Stage 2
-idx = find([stats.ActualMajorAxisLength] > 30 & [stats.ActualMajorAxisLength] <= 70);
+idx = find([stats.ActualMajorAxisLength] > 30 & [stats.ActualMajorAxisLength] <= 70 & [stats.Eccentricity] < 0.65 & [stats.MeanIntensity] > 390);
 
 t2 = ismember(labelmatrix(cc), idx);  
 figure, imshow(t2), title('Stage t2 mask');
 t2_stats = stats(idx);
+end;
 
 %%
 
 % Discard stage t1a due to high false positive rate
-% If all blobs are in stage t1a, we consider it as a normal lung
-if length(stats) == length(t1a_stats)
+% If there are no tumors > stage t1a, we consider as normal
+if length(stats) == 0
     ('normal lung')
-%     if length(t1a_stats) ~= 0
-%         % Visualize output
-%         t1a_holes = bwlabel(t1b); 
-%         boundary = bwboundaries(t1a_holes);
-%         figure, imshow(dImage, []), title('T1a Tumors');
-%         hold on
-%         visboundaries(t1a_holes, 'Color', 'r');
-% 
-%         maskedImageT1a = dImage;
-%         maskedImageT1a(~t1a_holes) = 0;
-%         figure, imshow(maskedImageT1a, []), title('T1a Tumors');
+
 else
-    ('tumor detected')
+    if (length(t1b_stats) + length(t1c_stats) + length(t2_stats) == 0)
+    ('normal lung')
+    
     
     % Visualize output
-    if length(t1b_stats) ~= 0
-        t1b_holes = bwlabel(t1b); 
-        boundary = bwboundaries(t1b_holes);
-        figure, imshow(dImage, []), title('T1b Tumors');
+    fprintf('\nEarly Detection saves lives! Possible nodules:\n\n');
+    if length(t1a_stats) ~= 0
+        t1a_holes = bwlabel(t1a); 
+        boundary = bwboundaries(t1a_holes);
+        figure, imshow(dImage, []), title('Probable T1a Tumors');
         hold on
         visboundaries(boundary, 'Color', 'r');
 
-        maskedImageT1b = dImage;
-        maskedImageT1b(~t1b_holes) = 0;
-        figure, imshow(maskedImageT1b, []), title('T1b Tumors');
+        maskedImageT1a = dImage;
+        maskedImageT1a(~t1a_holes) = 0;
+        
+        figure, imshow(maskedImageT1a, []), title(' Probable T1a Tumors');
+        showNoduleStats(t1a_stats);
     end
-    
-    % Visualize output
-    if length(t1c_stats) ~= 0
-        t1c_holes = bwlabel(t1c); 
-        boundary = bwboundaries(t1c_holes);
-        imshow(dImage, []), title('T1c Tumors');
-        hold on
-        visboundaries(boundary, 'Color', 'g');
+        
+    else
+        ('tumor detected')
 
-        maskedImageT1c = dImage;
-        maskedImageT1c(~t1c_holes) = 0;
-        figure, imshow(maskedImageT1c, []), title('T1c Tumors');
+    %     % Visualize output of t1a nodules
+    %     if length(t1a_stats) ~= 0
+    %         t1a_holes = bwlabel(t1a); 
+    %         boundary = bwboundaries(t1a_holes);
+    %         figure, imshow(dImage, []), title('Probable T1a Tumors');
+    %         hold on
+    %         visboundaries(boundary, 'Color', 'r');
+    % 
+    %         maskedImageT1a = dImage;
+    %         maskedImageT1a(~t1a_holes) = 0;
+    %         
+    %         figure, imshow(maskedImageT1a, []), title(' Probable T1a Tumors');
+    %         showNoduleStats(t1a_stats);
+    %     end
+
+        % Visualize output
+        if length(t1b_stats) ~= 0
+            t1b_holes = bwlabel(t1b); 
+            boundary = bwboundaries(t1b_holes);
+            figure, imshow(dImage, []), title('T1b Tumors');
+            hold on
+            visboundaries(boundary, 'Color', 'r');
+
+            maskedImageT1b = dImage;
+            maskedImageT1b(~t1b_holes) = 0;
+
+            figure, imshow(maskedImageT1b, []), title('T1b Tumors');
+            showNoduleStats(t1b_stats);
+        end
+
+        % Visualize output
+        if length(t1c_stats) ~= 0
+            t1c_holes = bwlabel(t1c); 
+            boundary = bwboundaries(t1c_holes);
+            imshow(dImage, []), title('T1c Tumors');
+            hold on
+            visboundaries(boundary, 'Color', 'g');
+
+            maskedImageT1c = dImage;
+            maskedImageT1c(~t1c_holes) = 0;
+            figure, imshow(maskedImageT1c, []), title('T1c Tumors');
+
+            showNoduleStats(t1c_stats);
+        end
+
+        % Visualize output
+        if length(t2_stats) ~= 0
+            t2_holes = bwlabel(t2); 
+            boundary = bwboundaries(t2_holes);
+            figure, imshow(dImage, []), title('T2 Tumors');
+            hold on
+            visboundaries(boundary, 'Color', 'c');
+
+            maskedImageT2 = dImage;
+            maskedImageT2(~t2_holes) = 0;
+            figure, imshow(maskedImageT2, []), title('T2 Tumors');
+
+            showNoduleStats(t2_stats)
+        end
     end
-    
-    % Visualize output
-    if length(t2_stats) ~= 0
-        t2_holes = bwlabel(t2); 
-        boundary = bwboundaries(t2_holes);
-        figure, imshow(dImage, []), title('T2 Tumors');
-        hold on
-        visboundaries(boundary, 'Color', 'c');
-
-        maskedImageT2 = dImage;
-        maskedImageT2(~t2_holes) = 0;
-        figure, imshow(maskedImageT2, []), title('T2 Tumors');
-    end
-
 end
