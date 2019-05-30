@@ -1,15 +1,15 @@
 clc;
 clear;
 close all;
-%% Eric
+%% Eric open folder for 3d volume - not used
 
-fileFolder = fullfile(pwd, 'LIDC-IDRI-0001','01-01-2000-30178','3000566-03192');
-files = dir(fullfile(fileFolder, '*.dcm'));%specify data file diectory
-fileNames = {files.name};
+% fileFolder = fullfile(pwd, 'LIDC-IDRI-0001','01-01-2000-30178','3000566-03192');
+% files = dir(fullfile(fileFolder, '*.dcm'));%specify data file diectory
+% fileNames = {files.name};
 
 
 %% Read single DICOM Image
-dInfo = dicominfo('000096.dcm');
+dInfo = dicominfo(fullfile('Patient1','000123.dcm'));
 %dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
@@ -56,41 +56,6 @@ img_out_disp = sum(abs(img_out).^2, 3).^0.5;
 img_out_disp = img_out_disp./max(img_out_disp(:));
 figure, imshow(img_out_disp), title('gabor output, normalized');
 
-%% Eric - get lung volume
-
-% % Built-in Otsu Global Thresholding to find threshold value
-% T = graythresh(uint16(img_in));         % Threshold value
-% BW_OG = imbinarize(uint16(img_in),T);      % Threshold mask
-% % figure,imshow(BW_OG, []), title('Mask using Built-in Otsu Threshold');
-% 
-% % Invert mask
-% BW = imcomplement(BW_OG);
-% 
-% % Fill holes
-% BW = imfill(BW, 'holes');
-% % figure,imshow(BW, []), title('Mask using Built-in Otsu Threshold');
-% 
-% 
-% % Clear borders
-% BW = imclearborder(BW);
-% % figure,imshow(BW, []), title('Mask using Built-in Otsu Threshold after refining');
-% 
-% maskedImage = img_in;
-% maskedImage(~BW) = 0;
-% figure,imshow(maskedImage, []), title('Lung Volume using Built-in Otsu Threshold');
-
-%% Eric - get nodules
-% holes = imclearborder(BW_OG);
-% holesAccurate = bwareafilt(holes, [0, 1000]);
-% labeledImage = bwlabel(holesAccurate, 8);
-% blobMeasurements = regionprops(labeledImage, img_in,'all');
-% figure, imshow(labeledImage), title('Possible Tumors Mask');
-% 
-% maskedImage = img_in;
-% maskedImage(~labeledImage) = 0;
-% nnz(maskedImage)
-% figure, imshow(maskedImage, []), title('Masked Image showing Possible Tumors');
-
 %% Active Contour using masking to get Lung Volume
 Ir = img_out_disp;
 se = strel('disk', 20);
@@ -131,8 +96,8 @@ figure, imshow(tmp), title('Lung volume applied with RegionActiveContour Mask')
 % This is marker controlled watershed using masking to get nodules
 
 I_eq = adapthisteq(tmp);
-figure, imhist(tmp), title('Histogram of lung volume image');
-figure, imhist(I_eq), title('Histogram of lung volume image after equalization');
+% figure, imhist(tmp), title('Histogram of lung volume image');
+% figure, imhist(I_eq), title('Histogram of lung volume image after equalization');
 
 tmpBW = imbinarize(tmp, graythresh(I_eq)); % Built-in Otsu Thresholding to get nodules - blobs will clump together
 figure, imshow(tmpBW), title('Otsu BW Segmented lung nodules mask')
@@ -153,16 +118,17 @@ figure, imshow(dImage, []), title('Possible Nodules location')
 hold on
 visboundaries(boundary, 'Color', 'b');
 
-%% Tumor parameters to reduce false positives - hard coded
+%% Tumor parameters to reduce false positives - hard coded (does not stage tumor based on TNM)
 
-holesAccurate = bwareafilt(watershed_nodule, [50 1000]); % malignant tumour are usually larger than 50
-boundary = bwboundaries(holesAccurate);
-figure, imshow(dImage, []), title('Possible Nodules location (area considered)');
-hold on
-visboundaries(boundary, 'Color', 'r');
+% holesAccurate = bwareafilt(watershed_nodule, [50 1000]); % malignant tumour are usually larger than 50
+% boundary = bwboundaries(holesAccurate);
+% figure, imshow(dImage, []), title('Possible Nodules location (area considered)');
+% hold on
+% visboundaries(boundary, 'Color', 'r');
 
 %% Tumor parameters to reduce false positives
 
+holesAccurate = bwareafilt(watershed_nodule, [50 1000]); % malignant tumour are usually larger than 50
 labeledImage = bwlabel(holesAccurate); % Label each blob so we can make measurements of it
 blobMeasurements = regionprops(labeledImage,dImage,'all'); % Get all the blob properties
 
@@ -208,35 +174,43 @@ end
 
 % Stage t1a
 if (length(stats) ~= 0)
-idx = find([stats.ActualMajorAxisLength] > 3 & [stats.ActualMajorAxisLength] <= 10 & [stats.Eccentricity] < 0.9 & [stats.MeanIntensity] > 380);
+idx = find([stats.ActualMajorAxisLength] > 3 & [stats.ActualMajorAxisLength] <= 10 & [stats.Eccentricity] < 0.8 & [stats.MeanIntensity] < 800);
 
 t1a = ismember(labelmatrix(cc), idx);  
-figure, imshow(t1a), title('Stage t1a mask - Discard due to high false positive');
+% figure, imshow(t1a), title('Stage t1a mask - Discard due to high false positive');
 t1a_stats = stats(idx);
 
 % Stage t1b
-idx = find([stats.ActualMajorAxisLength] > 10 & [stats.ActualMajorAxisLength] <= 20 & [stats.Eccentricity] < 0.85 & [stats.MeanIntensity] > 380);
+idx = find([stats.ActualMajorAxisLength] > 10 & [stats.ActualMajorAxisLength] <= 20 & [stats.Eccentricity] < 0.8 & [stats.MeanIntensity] < 800);
 
 t1b = ismember(labelmatrix(cc), idx);  
-figure, imshow(t1b), title('Stage t1b mask');
+% figure, imshow(t1b), title('Stage t1b mask');
 t1b_stats = stats(idx);
 
 % Stage t1c
-idx = find([stats.ActualMajorAxisLength] > 20 & [stats.ActualMajorAxisLength] <= 30 & [stats.Eccentricity] < 0.75 & [stats.MeanIntensity] > 385);
+idx = find([stats.ActualMajorAxisLength] > 20 & [stats.ActualMajorAxisLength] <= 30 & [stats.Eccentricity] < 0.8 & [stats.MeanIntensity] < 800);
 
 t1c = ismember(labelmatrix(cc), idx);  
-figure, imshow(t1c), title('Stage t1c mask');
+% figure, imshow(t1c), title('Stage t1c mask');
 t1c_stats = stats(idx);
 
 % Stage 2
-idx = find([stats.ActualMajorAxisLength] > 30 & [stats.ActualMajorAxisLength] <= 70 & [stats.Eccentricity] < 0.65 & [stats.MeanIntensity] > 390);
+idx = find([stats.ActualMajorAxisLength] > 30 & [stats.ActualMajorAxisLength] <= 50 & [stats.Eccentricity] < 0.8 & [stats.MeanIntensity] < 800);
 
 t2 = ismember(labelmatrix(cc), idx);  
-figure, imshow(t2), title('Stage t2 mask');
+% figure, imshow(t2), title('Stage t2 mask');
 t2_stats = stats(idx);
-end;
 
-%%
+
+% Stage 3
+idx = find([stats.ActualMajorAxisLength] > 50 & [stats.Eccentricity] < 0.8 & [stats.MeanIntensity] < 800);
+
+t3 = ismember(labelmatrix(cc), idx);  
+% figure, imshow(t3), title('Stage t3 mask');
+t3_stats = stats(idx);
+end
+
+%% Display Result on Command Window
 
 % Discard stage t1a due to high false positive rate
 % If there are no tumors > stage t1a, we consider as normal
@@ -260,6 +234,7 @@ else
         maskedImageT1a = dImage;
         maskedImageT1a(~t1a_holes) = 0;
         
+        disp('T1a\n');
         figure, imshow(maskedImageT1a, []), title(' Probable T1a Tumors');
         showNoduleStats(t1a_stats);
     end
@@ -267,22 +242,23 @@ else
     else
         ('tumor detected')
 
-    %     % Visualize output of t1a nodules
-    %     if length(t1a_stats) ~= 0
-    %         t1a_holes = bwlabel(t1a); 
-    %         boundary = bwboundaries(t1a_holes);
-    %         figure, imshow(dImage, []), title('Probable T1a Tumors');
-    %         hold on
-    %         visboundaries(boundary, 'Color', 'r');
-    % 
-    %         maskedImageT1a = dImage;
-    %         maskedImageT1a(~t1a_holes) = 0;
-    %         
-    %         figure, imshow(maskedImageT1a, []), title(' Probable T1a Tumors');
-    %         showNoduleStats(t1a_stats);
-    %     end
+        % Visualize output of t1a nodules
+        if length(t1a_stats) ~= 0
+            t1a_holes = bwlabel(t1a); 
+            boundary = bwboundaries(t1a_holes);
+            figure, imshow(dImage, []), title('Probable T1a Tumors');
+            hold on
+            visboundaries(boundary, 'Color', 'r');
+    
+            maskedImageT1a = dImage;
+            maskedImageT1a(~t1a_holes) = 0;
+            
+            disp('T1a');
+            figure, imshow(maskedImageT1a, []), title(' Probable T1a Tumors');
+            showNoduleStats(t1a_stats);
+        end
 
-        % Visualize output
+        % Visualize output of t1b nodules
         if length(t1b_stats) ~= 0
             t1b_holes = bwlabel(t1b); 
             boundary = bwboundaries(t1b_holes);
@@ -292,7 +268,8 @@ else
 
             maskedImageT1b = dImage;
             maskedImageT1b(~t1b_holes) = 0;
-
+            
+            disp('T1b');
             figure, imshow(maskedImageT1b, []), title('T1b Tumors');
             showNoduleStats(t1b_stats);
         end
@@ -309,6 +286,7 @@ else
             maskedImageT1c(~t1c_holes) = 0;
             figure, imshow(maskedImageT1c, []), title('T1c Tumors');
 
+            disp('T1c');
             showNoduleStats(t1c_stats);
         end
 
@@ -323,8 +301,25 @@ else
             maskedImageT2 = dImage;
             maskedImageT2(~t2_holes) = 0;
             figure, imshow(maskedImageT2, []), title('T2 Tumors');
-
+        
+            disp('T2');
             showNoduleStats(t2_stats)
+        end
+        
+          % Visualize output
+        if length(t3_stats) ~= 0
+            t3_holes = bwlabel(t3); 
+            boundary = bwboundaries(t3_holes);
+            figure, imshow(dImage, []), title('T3 Tumors');
+            hold on
+            visboundaries(boundary, 'Color', 'y');
+
+            maskedImageT3 = dImage;
+            maskedImageT3(~t3_holes) = 0;
+            figure, imshow(maskedImageT3, []), title('T3 Tumors');
+
+            disp('T3');
+            showNoduleStats(t3_stats)
         end
     end
 end
