@@ -9,7 +9,7 @@ close all;
 
 
 %% Read single DICOM Image
-dInfo = dicominfo(fullfile('Patient1','000123.dcm'));
+dInfo = dicominfo(fullfile('Patient1','000034.dcm'));
 %dReference = imread('abnormal1.jpg');
 % dImage = uint8(dicomread(dInfo));
 dImage = dicomread(dInfo);
@@ -71,6 +71,11 @@ m = zeros(size(Ia,1),size(Ia,2));
 m(200:320,95:180) = 1;
 m(186:321,348:410) = 1;
 seg = region_seg(Ia, m, 800); % Run segmentation with 800 iteration
+
+% Closing and filling up holes to obtain nodules close to pleural wall
+seg = imclose(seg, strel('disk', 20));
+seg = imfill(seg, 'holes');
+
 figure, imshow(seg); title('Global Region-Based Segmentation - RegionActiveContour Mask')
 
 %% Binarization for image classification (masked Image)
