@@ -1,4 +1,10 @@
 # LungCancerDetection
+-------------------------------------------------------
+
+Run main.m and select images from image directory
+
+-------------------------------------------------------
+
 FIT3081 Lung Cancer Detection using Matlab
 
 LUNG CANCER DETECTION USING CT SCAN IMAGE PROCESSING (MATLAB 2018b)
